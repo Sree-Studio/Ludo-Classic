@@ -1,0 +1,23 @@
+{
+  "name": "Ludo-Classic",
+  "short_name": "LudoClassic",
+  "description": "A classic implementation of the beloved Ludo board game by Sree Studios.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2196f3",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["games", "entertainment"]
+}
