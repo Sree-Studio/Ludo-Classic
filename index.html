@@ -1,232 +1,341 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Ludo Game</title>
+    <meta charset="UTF-8">
+    <title>Ludo Game</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #1e1e2f;
+            color: white;
+            text-align: center;
+        }
 
-<style>
-body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background: #1e1e2f;
-    color: white;
-    text-align: center;
-}
+        #menu, #game, #leaderboard {
+            padding: 20px;
+        }
 
-#menu, #game, #leaderboard {
-    display: none;
-}
+        /* Initial state: Only menu is visible */
+        #game, #leaderboard, .hidden {
+            display: none;
+        }
 
-button {
-    padding: 12px 20px;
-    margin: 10px;
-    font-size: 16px;
-    cursor: pointer;
-}
+        button {
+            padding: 12px 20px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            background: #444;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
 
-#dice {
-    width: 80px;
-    height: 80px;
-    background: white;
-    color: black;
-    font-size: 40px;
-    line-height: 80px;
-    margin: 20px auto;
-    border-radius: 10px;
-    animation: none;
-}
+        button:hover { background: #666; }
 
-@keyframes roll {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
+        #dice {
+            width: 80px;
+            height: 80px;
+            background: white;
+            color: black;
+            font-size: 40px;
+            line-height: 80px;
+            margin: 20px auto;
+            border-radius: 10px;
+        }
 
-.board {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-}
+        #board-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
 
-.player {
-    padding: 10px;
-    border-radius: 10px;
-    width: 150px;
-}
+        #board {
+            display: grid;
+            grid-template-columns: repeat(13, 40px);
+            grid-template-rows: repeat(13, 40px);
+            gap: 2px;
+            background: #222;
+            padding: 5px;
+        }
 
-.red { background: #ff4d4d; }
-.green { background: #4dff4d; }
-.blue { background: #4d4dff; }
-.yellow { background: #ffff4d; color: black; }
+        .cell {
+            width: 40px;
+            height: 40px;
+            background: #eee;
+            border-radius: 4px;
+            position: relative;
+        }
 
-.piece {
-    background: white;
-    color: black;
-    padding: 6px;
-    margin: 4px;
-    border-radius: 50%;
-    cursor: pointer;
-}
+        .safe { background: #cfd8dc; border: 2px solid gold; }
 
-.win-animation {
-    animation: glow 1s infinite alternate;
-}
+        .token {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            border: 2px solid black;
+            z-index: 10;
+        }
 
-@keyframes glow {
-    from { box-shadow: 0 0 10px gold; }
-    to { box-shadow: 0 0 30px gold; }
-}
-</style>
+        .token.red { background: red; }
+        .token.green { background: green; }
+        .token.blue { background: blue; }
+        .token.yellow { background: gold; }
+
+        #winScreen {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+    </style>
 </head>
-
 <body>
-<div style="margin-bottom:10px;">
+
+<div style="margin:10px;">
+    <label>
+        <input type="checkbox" id="soundToggle" checked> Sound
+    </label>
     <button onclick="toggleFullscreen()">🔳 Fullscreen</button>
-    <button onclick="rollDice()">🎲 Roll (Space)</button>
+    <button onclick="location.reload()">Restart</button>
 </div>
 
 <h1>🎲 LUDO GAME 🎲</h1>
 
 <div id="menu">
     <h2>Select Mode</h2>
-    <button onclick="startGame(1)">Single Player</button>
+    <button onclick="startGame(1)">Single Player (vs 3 AI)</button>
     <button onclick="startGame(2)">2 Player</button>
-    <button onclick="startGame(3)">3 Player</button>
     <button onclick="startGame(4)">4 Player</button>
 </div>
 
 <div id="game">
-    <h2 id="turnText"></h2>
-
+    <h2 id="turnText">Turn: RED</h2>
     <div id="dice">🎲</div>
     <button onclick="rollDice()">Roll Dice</button>
 
-    <div class="board" id="board"></div>
+    <div id="board-container">
+        <div id="board"></div>
+    </div>
 </div>
 
-<div id="leaderboard">
-    <h2>🏆 Leaderboard</h2>
-    <ol id="results"></ol>
+<div id="winScreen" class="hidden">
+    <h1>🏆 Match Finished</h1>
+    <ol id="finalLeaderboard"></ol>
     <button onclick="location.reload()">Play Again</button>
 </div>
 
-<!-- Sounds -->
-<audio id="diceSound" src="wwwroot/dice.mp3"></audio>
-<audio id="moveSound" src="wwwroot/move.mp3"></audio>
-<audio id="winSound" src="wwwroot/win.mp3"></audio>
-
+<audio id="diceSound" src=""></audio>
+<audio id="moveSound" src=""></audio>
+<audio id="winSound" src=""></audio>
 
 <script>
-const colors = ["red", "green", "blue", "yellow"];
+/* ---------- INITIALIZATION ---------- */
+let settings = {
+    sound: true,
+    players: 4,
+    aiPlayers: []
+};
+
 let players = [];
 let currentPlayer = 0;
 let diceValue = 0;
-let finishedPlayers = [];
+let leaderboard = [];
+
+const SAFE_CELLS = [0, 8, 13, 21, 26, 34, 39, 47];
+const COLORS = ["red", "green", "blue", "yellow"];
+
+// This mimics a basic path through a grid. 
+// In a real Ludo game, this array would contain all 52+ coordinates.
+const BOARD_PATH = [
+  44, 45, 46, 47, 48, 56, 69, 82, 95, 108, 121, 134, 147, 148, 149, 136, 123, 110, 97, 84, 71, 70, 68, 67, 66, 65, 52, 39, 26, 13, 0, 1, 2, 15, 28, 41, 54, 67, 80, 81
+];
 
 function startGame(count) {
+    settings.players = 4; // Ludo usually has 4 slots
+    // If single player, set 1, 2, and 3 as AI
+    settings.aiPlayers = count === 1 ? [1, 2, 3] : []; 
+    
+    document.getElementById("menu").style.display = "none";
+    document.getElementById("game").style.display = "block";
+    
+    settings.sound = document.getElementById("soundToggle").checked;
+    initGame(4);
+}
+
+function initGame(playerCount) {
     players = [];
-    finishedPlayers = [];
+    leaderboard = [];
     currentPlayer = 0;
 
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < playerCount; i++) {
         players.push({
-            color: colors[i],
-            pieces: [0,0,0,0],
-            finished: 0
+            color: COLORS[i],
+            pieces: [-1, -1, -1, -1], 
+            finished: 0,
+            isAI: settings.aiPlayers.includes(i)
         });
     }
 
-    document.getElementById("menu").style.display = "none";
-    document.getElementById("game").style.display = "block";
     renderBoard();
     updateTurn();
 }
 
-function renderBoard() {
-    const board = document.getElementById("board");
-    board.innerHTML = "";
-
-    players.forEach((player, pIndex) => {
-        const div = document.createElement("div");
-        div.className = `player ${player.color}`;
-        div.innerHTML = `<h3>${player.color.toUpperCase()}</h3>`;
-
-        player.pieces.forEach((pos, i) => {
-            const piece = document.createElement("div");
-            piece.className = "piece";
-            piece.innerText = pos >= 100 ? "🏁" : pos;
-            piece.onclick = () => movePiece(pIndex, i);
-            div.appendChild(piece);
-        });
-
-        board.appendChild(div);
-    });
-}
-
+/* ---------- CORE LOGIC ---------- */
 function rollDice() {
-    const dice = document.getElementById("dice");
-    dice.style.animation = "roll 0.5s linear";
-    document.getElementById("diceSound").play();
+    if (diceValue !== 0) return; 
 
-    setTimeout(() => {
-        dice.style.animation = "none";
-        diceValue = Math.floor(Math.random() * 6) + 1;
-        dice.innerText = diceValue;
-    }, 500);
+    diceValue = Math.floor(Math.random() * 6) + 1;
+    document.getElementById("dice").innerText = diceValue;
+    playSound("diceSound");
+
+    // Check if player has any valid moves
+    let hasMove = players[currentPlayer].pieces.some((pos) => isValidMove(pos));
+
+    if (!hasMove) {
+        setTimeout(() => {
+            diceValue = 0;
+            nextTurn();
+        }, 1000);
+    } else if (players[currentPlayer].isAI) {
+        setTimeout(aiMove, 700);
+    }
 }
 
 function movePiece(pIndex, pieceIndex) {
     if (pIndex !== currentPlayer || diceValue === 0) return;
 
-    const player = players[pIndex];
-    player.pieces[pieceIndex] += diceValue;
-    document.getElementById("moveSound").play();
+    let pos = players[pIndex].pieces[pieceIndex];
 
-    if (player.pieces[pieceIndex] >= 30) {
-        player.pieces[pieceIndex] = 100;
-        player.finished++;
-
-        if (player.finished === 4) {
-            finishedPlayers.push(player.color);
-            document.getElementById("winSound").play();
-        }
+    if (pos === -1 && diceValue !== 6) return;
+    
+    if (pos === -1 && diceValue === 6) {
+        players[pIndex].pieces[pieceIndex] = 0; // Entry
+    } else {
+        players[pIndex].pieces[pieceIndex] += diceValue;
     }
 
+    handleCapture(pIndex, pieceIndex);
+    checkWin(pIndex, pieceIndex);
+
+    let rolledSix = (diceValue === 6);
     diceValue = 0;
+
+    if (!rolledSix) {
+        nextTurn();
+    } else {
+        updateTurn(); // Allow same player to roll again
+    }
+
     renderBoard();
-    checkGameEnd();
-    nextTurn();
 }
 
 function nextTurn() {
-    do {
-        currentPlayer = (currentPlayer + 1) % players.length;
-    } while (players[currentPlayer].finished === 4);
+    currentPlayer = (currentPlayer + 1) % players.length;
+    if (players[currentPlayer].finished === 4) return nextTurn();
 
     updateTurn();
-}
-
-function updateTurn() {
-    document.getElementById("turnText").innerText =
-        `Turn: ${players[currentPlayer].color.toUpperCase()}`;
-}
-
-function checkGameEnd() {
-    if (finishedPlayers.length === players.length - 1) {
-        document.getElementById("game").style.display = "none";
-        document.getElementById("leaderboard").style.display = "block";
-
-        const results = document.getElementById("results");
-        results.innerHTML = "";
-
-        finishedPlayers.forEach(p => {
-            const li = document.createElement("li");
-            li.innerText = p.toUpperCase();
-            results.appendChild(li);
-        });
+    if (players[currentPlayer].isAI) {
+        setTimeout(rollDice, 1000);
     }
 }
 
-document.getElementById("menu").style.display = "block";
+function updateTurn() {
+    document.getElementById("turnText").innerText = "Turn: " + players[currentPlayer].color.toUpperCase();
+}
+
+/* ---------- UI RENDERING ---------- */
+function renderBoard() {
+    const board = document.getElementById("board");
+    board.innerHTML = "";
+
+    for (let i = 0; i < 169; i++) {
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        if (SAFE_CELLS.includes(i % 52)) cell.classList.add("safe");
+        board.appendChild(cell);
+    }
+    renderTokens();
+}
+
+function renderTokens() {
+    const cells = document.querySelectorAll(".cell");
+    players.forEach((player, pIndex) => {
+        player.pieces.forEach((pos, i) => {
+            if (pos === -1) return; // Still at home
+
+            const cellIndex = BOARD_PATH[pos % BOARD_PATH.length];
+            const token = document.createElement("div");
+            token.className = `token ${player.color}`;
+            token.onclick = () => movePiece(pIndex, i);
+            cells[cellIndex].appendChild(token);
+        });
+    });
+}
+
+/* ---------- HELPERS ---------- */
+function isValidMove(pos) {
+    if (pos === -1 && diceValue === 6) return true;
+    if (pos >= 0 && pos + diceValue <= 57) return true;
+    return false;
+}
+
+function handleCapture(pIndex, pieceIndex) {
+    let pos = players[pIndex].pieces[pieceIndex];
+    if (SAFE_CELLS.includes(pos)) return;
+
+    players.forEach((pl, i) => {
+        if (i === pIndex) return;
+        pl.pieces.forEach((p, j) => {
+            if (p === pos) {
+                pl.pieces[j] = -1;
+                playSound("moveSound");
+            }
+        });
+    });
+}
+
+function checkWin(pIndex, pieceIndex) {
+    if (players[pIndex].pieces[pieceIndex] >= 57) {
+        players[pIndex].finished++;
+        if (players[pIndex].finished === 4) {
+            leaderboard.push(players[pIndex].color);
+            if (leaderboard.length >= players.length - 1) showWinScreen();
+        }
+    }
+}
+
+function aiMove() {
+    let player = players[currentPlayer];
+    let possibleMoves = [];
+
+    player.pieces.forEach((pos, index) => {
+        if (isValidMove(pos)) possibleMoves.push(index);
+    });
+
+    if (possibleMoves.length > 0) {
+        let choice = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+        movePiece(currentPlayer, choice);
+    }
+}
+
+function playSound(id) {
+    if (!settings.sound) return;
+    const audio = document.getElementById(id);
+    if (audio && audio.src) audio.play().catch(() => {});
+}
+
 function toggleFullscreen() {
     if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen();
@@ -234,13 +343,17 @@ function toggleFullscreen() {
         document.exitFullscreen();
     }
 }
-document.addEventListener("keydown", (e) => {
-    if (e.code === "Space") {
-        rollDice();
-    }
-});
 
+function showWinScreen() {
+    document.getElementById("winScreen").classList.remove("hidden");
+    const list = document.getElementById("finalLeaderboard");
+    leaderboard.forEach(color => {
+        let li = document.createElement("li");
+        li.innerText = color.toUpperCase();
+        list.appendChild(li);
+    });
+}
 </script>
+
 </body>
 </html>
-
