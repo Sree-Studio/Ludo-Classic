@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ludo Game</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #1e1e2f;
+    color: white;
+    text-align: center;
+}
+
+#menu, #game, #leaderboard {
+    display: none;
+}
+
+button {
+    padding: 12px 20px;
+    margin: 10px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+#dice {
+    width: 80px;
+    height: 80px;
+    background: white;
+    color: black;
+    font-size: 40px;
+    line-height: 80px;
+    margin: 20px auto;
+    border-radius: 10px;
+    animation: none;
+}
+
+@keyframes roll {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.board {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+.player {
+    padding: 10px;
+    border-radius: 10px;
+    width: 150px;
+}
+
+.red { background: #ff4d4d; }
+.green { background: #4dff4d; }
+.blue { background: #4d4dff; }
+.yellow { background: #ffff4d; color: black; }
+
+.piece {
+    background: white;
+    color: black;
+    padding: 6px;
+    margin: 4px;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.win-animation {
+    animation: glow 1s infinite alternate;
+}
+
+@keyframes glow {
+    from { box-shadow: 0 0 10px gold; }
+    to { box-shadow: 0 0 30px gold; }
+}
+</style>
+</head>
+
+<body>
+<div style="margin-bottom:10px;">
+    <button onclick="toggleFullscreen()">🔳 Fullscreen</button>
+    <button onclick="rollDice()">🎲 Roll (Space)</button>
+</div>
+
+<h1>🎲 LUDO GAME 🎲</h1>
+
+<div id="menu">
+    <h2>Select Mode</h2>
+    <button onclick="startGame(1)">Single Player</button>
+    <button onclick="startGame(2)">2 Player</button>
+    <button onclick="startGame(3)">3 Player</button>
+    <button onclick="startGame(4)">4 Player</button>
+</div>
+
+<div id="game">
+    <h2 id="turnText"></h2>
+
+    <div id="dice">🎲</div>
+    <button onclick="rollDice()">Roll Dice</button>
+
+    <div class="board" id="board"></div>
+</div>
+
+<div id="leaderboard">
+    <h2>🏆 Leaderboard</h2>
+    <ol id="results"></ol>
+    <button onclick="location.reload()">Play Again</button>
+</div>
+
+<!-- Sounds -->
+<audio id="diceSound" src="dice.mp3"></audio>
+<audio id="moveSound" src="move.mp3"></audio>
+<audio id="winSound" src="win.mp3"></audio>
+
+
+<script>
+const colors = ["red", "green", "blue", "yellow"];
+let players = [];
+let currentPlayer = 0;
+let diceValue = 0;
+let finishedPlayers = [];
+
+function startGame(count) {
+    players = [];
+    finishedPlayers = [];
+    currentPlayer = 0;
+
+    for (let i = 0; i < count; i++) {
+        players.push({
+            color: colors[i],
+            pieces: [0,0,0,0],
+            finished: 0
+        });
+    }
+
+    document.getElementById("menu").style.display = "none";
+    document.getElementById("game").style.display = "block";
+    renderBoard();
+    updateTurn();
+}
+
+function renderBoard() {
+    const board = document.getElementById("board");
+    board.innerHTML = "";
+
+    players.forEach((player, pIndex) => {
+        const div = document.createElement("div");
+        div.className = `player ${player.color}`;
+        div.innerHTML = `<h3>${player.color.toUpperCase()}</h3>`;
+
+        player.pieces.forEach((pos, i) => {
+            const piece = document.createElement("div");
+            piece.className = "piece";
+            piece.innerText = pos >= 100 ? "🏁" : pos;
+            piece.onclick = () => movePiece(pIndex, i);
+            div.appendChild(piece);
+        });
+
+        board.appendChild(div);
+    });
+}
+
+function rollDice() {
+    const dice = document.getElementById("dice");
+    dice.style.animation = "roll 0.5s linear";
+    document.getElementById("diceSound").play();
+
+    setTimeout(() => {
+        dice.style.animation = "none";
+        diceValue = Math.floor(Math.random() * 6) + 1;
+        dice.innerText = diceValue;
+    }, 500);
+}
+
+function movePiece(pIndex, pieceIndex) {
+    if (pIndex !== currentPlayer || diceValue === 0) return;
+
+    const player = players[pIndex];
+    player.pieces[pieceIndex] += diceValue;
+    document.getElementById("moveSound").play();
+
+    if (player.pieces[pieceIndex] >= 30) {
+        player.pieces[pieceIndex] = 100;
+        player.finished++;
+
+        if (player.finished === 4) {
+            finishedPlayers.push(player.color);
+            document.getElementById("winSound").play();
+        }
+    }
+
+    diceValue = 0;
+    renderBoard();
+    checkGameEnd();
+    nextTurn();
+}
+
+function nextTurn() {
+    do {
+        currentPlayer = (currentPlayer + 1) % players.length;
+    } while (players[currentPlayer].finished === 4);
+
+    updateTurn();
+}
+
+function updateTurn() {
+    document.getElementById("turnText").innerText =
+        `Turn: ${players[currentPlayer].color.toUpperCase()}`;
+}
+
+function checkGameEnd() {
+    if (finishedPlayers.length === players.length - 1) {
+        document.getElementById("game").style.display = "none";
+        document.getElementById("leaderboard").style.display = "block";
+
+        const results = document.getElementById("results");
+        results.innerHTML = "";
+
+        finishedPlayers.forEach(p => {
+            const li = document.createElement("li");
+            li.innerText = p.toUpperCase();
+            results.appendChild(li);
+        });
+    }
+}
+
+document.getElementById("menu").style.display = "block";
+function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+    } else {
+        document.exitFullscreen();
+    }
+}
+document.addEventListener("keydown", (e) => {
+    if (e.code === "Space") {
+        rollDice();
+    }
+});
+
+</script>
+</body>
+</html>
