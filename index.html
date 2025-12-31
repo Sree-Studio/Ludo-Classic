@@ -1,313 +1,352 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Ludo Game</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ludo-Classic</title>
+    <style>
+        :root {
+            --glass: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --accent: #e94560;
+            --red: #ff4757; --green: #2ed573; --yellow: #ffa502; --blue: #1e90ff;
+        }
 
-<style>
-body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background: #1e1e2f;
-    color: white;
-    text-align: center;
-}
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
-#menu, #game {
-    padding: 20px;
-}
+        body { 
+            font-family: 'Segoe UI', Roboto, sans-serif; 
+            background: radial-gradient(circle at center, #1a1a2e 0%, #0f0c29 100%);
+            color: white; display: flex; flex-direction: column; 
+            align-items: center; justify-content: center;
+            min-height: 100vh; overflow: hidden; touch-action: manipulation;
+        }
 
-.hidden { display: none; }
+        .big-btn { 
+            padding: 20px; font-size: 1.1rem; cursor: pointer; border-radius: 16px; 
+            border: 2px solid var(--glass-border); background: var(--glass); 
+            color: white; font-weight: 800; transition: 0.3s ease;
+            backdrop-filter: blur(5px); text-transform: uppercase; width: 100%; margin-bottom: 12px;
+        }
+        .big-btn:hover { box-shadow: 0 0 20px var(--accent); border-color: #fff; transform: translateY(-2px); }
 
-button {
-    padding: 12px 20px;
-    margin: 10px;
-    font-size: 16px;
-    cursor: pointer;
-    background: #444;
-    color: white;
-    border: none;
-    border-radius: 5px;
-}
+        .game-controls { position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 500; }
+        .circle-btn { background: var(--glass); border: 1px solid var(--glass-border); width: 50px; height: 50px; border-radius: 50%; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; }
 
-button:hover { background: #666; }
+        /* --- VISIBILITY: PATHS & 2D STARS --- */
+        .hs-red { background: var(--red) !important; filter: brightness(1.1); }
+        .hs-green { background: var(--green) !important; filter: brightness(1.1); }
+        .hs-yellow { background: var(--yellow) !important; filter: brightness(1.1); }
+        .hs-blue { background: var(--blue) !important; filter: brightness(1.1); }
+        .safe-point::after { content: '★'; font-size: 1.4rem; color: #ffd700; filter: drop-shadow(0 0 2px #000); z-index: 2; }
 
-#dice {
-    width: 80px;
-    height: 80px;
-    background: white;
-    color: black;
-    font-size: 40px;
-    line-height: 80px;
-    margin: 20px auto;
-    border-radius: 10px;
-}
+        #menu, #nameEntryModal, #howToPlayModal, #pauseModal, #settingsModal, #winScreen { 
+            position: fixed; inset: 0; 
+            background: linear-gradient(135deg, rgba(15, 12, 41, 0.98), rgba(26, 26, 46, 0.98));
+            display: flex; flex-direction: column; justify-content: center; 
+            align-items: center; z-index: 1000; backdrop-filter: blur(15px);
+        }
+        .hidden { display: none !important; }
+        .modal-content { background: var(--glass); padding: 30px; border-radius: 20px; width: 90%; max-width: 450px; border: 1px solid var(--glass-border); text-align: center; max-height: 85vh; overflow-y: auto; }
 
-#board {
-    display: grid;
-    grid-template-columns: repeat(13, 40px);
-    grid-template-rows: repeat(13, 40px);
-    gap: 2px;
-    background: #222;
-    padding: 5px;
-    justify-content: center;
-    margin: auto;
-}
+        input[type="text"] {
+            width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid var(--glass-border);
+            background: rgba(255,255,255,0.1); color: white; font-size: 1rem; outline: none;
+        }
 
-.cell {
-    width: 40px;
-    height: 40px;
-    background: #eee;
-    border-radius: 4px;
-    position: relative;
-}
+        #game { display: none; padding: 20px; text-align: center; }
+        #board { display: grid; grid-template-columns: repeat(15, 22px); grid-template-rows: repeat(15, 22px); gap: 1.5px; background: #000; border: 4px solid #000; margin: 0 auto; position: relative; }
+        @media (min-width: 600px) { #board { grid-template-columns: repeat(15, 30px); grid-template-rows: repeat(15, 30px); } }
 
-.safe {
-    background: #cfd8dc;
-    border: 2px solid gold;
-}
+        .cell { width: 100%; height: 100%; background: white; position: relative; display: flex; align-items: center; justify-content: center; }
+        .base-red { background: var(--red); } .base-green { background: var(--green); }
+        .base-yellow { background: var(--yellow); } .base-blue { background: var(--blue); }
+        
+        .token { width: 85%; height: 85%; border-radius: 50%; position: absolute; border: 2px solid white; transition: 0.2s; z-index: 5; box-shadow: 0 4px 6px rgba(0,0,0,0.4); }
+        .selectable { animation: bounce 0.6s infinite alternate; cursor: pointer; box-shadow: 0 0 15px #fff !important; z-index: 50; }
+        
+        #dice-box { font-size: 45px; background: #fff; width: 75px; height: 75px; line-height: 75px; color: #333; border-radius: 15px; cursor: pointer; box-shadow: 0 6px 0 #ccc; margin: 0 auto 20px; user-select: none; }
+        #roll-announcer { width: 100%; height: 50px; background: rgba(0,0,0,0.5); margin-top: 15px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 900; border: 1px solid var(--glass-border); text-transform: uppercase; letter-spacing: 1px; }
 
-.token {
-    width: 25px;
-    height: 25px;
-    border-radius: 50%;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    cursor: pointer;
-    border: 2px solid black;
-}
+        @keyframes bounce { from { transform: scale(1); } to { transform: scale(1.15); } }
+        .rolling { animation: dice-roll 0.05s infinite linear; }
+        @keyframes dice-roll { 0% { transform: rotate(0); } 100% { transform: rotate(90deg); } }
 
-.red { background: red; }
-.green { background: green; }
-.blue { background: blue; }
-.yellow { background: gold; }
-
-#winScreen {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,.9);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-}
-</style>
+        .confetti { position: absolute; width: 8px; height: 8px; border-radius: 50%; animation: firework 0.6s ease-out forwards; pointer-events: none; z-index: 100; }
+        @keyframes firework { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; } }
+    </style>
 </head>
-
 <body>
 
-<div>
-<label>
-<input type="checkbox" id="soundToggle" checked> Sound
-</label>
-<button onclick="toggleFullscreen()">Fullscreen</button>
-<button onclick="location.reload()">Restart</button>
-</div>
+    <div class="game-controls">
+        <button id="muteBtn" class="circle-btn" onclick="toggleMute()">🔊</button>
+        <button id="pauseBtn" class="circle-btn hidden" onclick="togglePause(true)">⏸️</button>
+    </div>
 
-<h1>🎲 LUDO GAME 🎲</h1>
+    <div id="menu">
+        <h1 style="font-size: 3rem; margin-bottom: 30px;">LUDO-CLASSIC</h1>
+        <div style="width: 90%; max-width: 350px;">
+            <button class="big-btn" onclick="openNameEntry(1)">Solo vs AI</button>
+            <button class="big-btn" onclick="openNameEntry(2)">2 Players</button>
+            <button class="big-btn" onclick="openNameEntry(4)">4 Players</button>
+            <button class="big-btn" style="font-size: 0.8rem; background: rgba(255,255,255,0.05);" onclick="toggleHowTo(true)">❓ Rules & How to Play</button>
+            <button class="big-btn" style="font-size: 0.8rem; opacity: 0.7;" onclick="toggleSettings(true)">🎵 Music Settings</button>
+        </div>
+    </div>
 
-<div id="menu">
-<button onclick="startGame(1)">Single Player</button>
-<button onclick="startGame(2)">2 Player</button>
-<button onclick="startGame(4)">4 Player</button>
-</div>
+    <div id="nameEntryModal" class="hidden">
+        <div class="modal-content">
+            <h2 style="margin-bottom: 15px;">Enter Player Names</h2>
+            <div id="nameFields"></div>
+            <button class="big-btn" style="background: var(--accent); margin-top: 10px;" onclick="startGameWithNames()">Start Match</button>
+        </div>
+    </div>
 
-<div id="game" class="hidden">
-<h2 id="turnText"></h2>
-<div id="dice">🎲</div>
-<button onclick="rollDice()">Roll Dice</button>
-<div id="board"></div>
-</div>
+    <div id="howToPlayModal" class="hidden">
+        <div class="modal-content">
+            <h2 style="margin-bottom:15px; color: var(--accent);">Manual & Rules</h2>
+            <div style="text-align:left; font-size: 0.85rem; line-height: 1.5; margin-bottom: 20px;">
+                <p>• <b>Unlocking:</b> Roll a <b>6</b> to move a token from base.</p>
+                <p>• <b>Bonus:</b> Rolling a <b>6</b> or <b>capturing</b> an opponent earns an extra turn.</p>
+                <p>• <b>Safe Squares (★):</b> Tokens here cannot be captured.</p>
+                <p>• <b>Winning:</b> First to get all 4 tokens to the center home wins!</p>
+            </div>
+            <button class="big-btn" onclick="toggleHowTo(false)">Close</button>
+        </div>
+    </div>
 
-<div id="winScreen" class="hidden">
-<h1>🏆 Game Over</h1>
-<ol id="finalLeaderboard"></ol>
-<button onclick="location.reload()">Play Again</button>
-</div>
+    <div id="settingsModal" class="hidden">
+        <div class="modal-content">
+            <h2 style="margin-bottom: 15px;">Theme Selector</h2>
+            <button class="big-btn" onclick="previewTheme(0)">Track 1</button>
+            <button class="big-btn" onclick="previewTheme(1)">Track 2</button>
+            <button class="big-btn" onclick="previewTheme(2)">Track 3</button>
+            <button class="big-btn" onclick="previewTheme(3)">Track 4</button>
+            <button class="big-btn" style="background: var(--accent); margin-top: 10px;" onclick="toggleSettings(false)">Apply</button>
+        </div>
+    </div>
+
+    <div id="winScreen" class="hidden">
+        <div class="modal-content">
+            <h1 style="color: #ffd700;">MATCH OVER!</h1>
+            <div id="rankings-list" style="margin: 20px 0;"></div>
+            <button class="big-btn" onclick="location.reload()">Main Menu</button>
+        </div>
+    </div>
+
+    <div id="pauseModal" class="hidden">
+        <div class="modal-content">
+            <h1>PAUSED</h1>
+            <button class="big-btn" onclick="togglePause(false)">Resume</button>
+            <button class="big-btn" style="background: rgba(233, 69, 96, 0.2);" onclick="location.reload()">Quit</button>
+        </div>
+    </div>
+
+    <div id="game">
+        <div id="scoreboard" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:15px; justify-content:center;"></div>
+        <div id="dice-box" onclick="rollDice()">🎲</div>
+        <div id="board"></div>
+        <div id="roll-announcer">WAITING FOR ROLL...</div>
+    </div>
+
+    <audio id="soundDice" src="sounds/dice.mp3"></audio>
+    <audio id="soundWin" src="sounds/win.mp3"></audio>
+    <audio id="soundTurn" src="sounds/turn.mp3"></audio>
+    <audio id="soundClick" src="sounds/mouse-click.mp3"></audio>
+    <audio id="themeSong" loop></audio>
 
 <script>
-/* ===== SETTINGS ===== */
-let soundOn = true;
+const COLORS = ['red', 'green', 'yellow', 'blue'];
+const DICE_FACES = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+const SAFE_POINTS = [[6,1], [1,8], [8,13], [13,6], [8,2], [6,12], [2,6], [12,8]];
+const THEMES = ['sounds/Theme-Song-1.mp3', 'sounds/Theme-Song-2.mp3', 'sounds/Theme-Song-3.mp3', 'sounds/Theme-Song-4.mp3'];
 
-document.getElementById("soundToggle").onchange = e => {
-    soundOn = e.target.checked;
-};
+let players = [], currentPlayer = 0, diceValue = 0, canRoll = true, isMuted = false, isPaused = false;
+let selectedThemeIndex = Math.floor(Math.random() * 4);
+let playerCountToSetup = 1;
 
-/* ===== GAME DATA ===== */
-const COLORS = ["red","green","blue","yellow"];
+function playSound(id) { if(!isMuted) { const s = document.getElementById(id); s.currentTime = 0; s.play().catch(()=>{}); } }
+function toggleMute() { isMuted = !isMuted; document.getElementById('themeSong').muted = isMuted; document.getElementById('muteBtn').textContent = isMuted ? '🔇' : '🔊'; }
+function togglePause(pause) { isPaused = pause; playSound('soundClick'); document.getElementById('pauseModal').classList.toggle('hidden', !pause); const t = document.getElementById('themeSong'); if (pause) t.pause(); else if (!isMuted) t.play(); }
+function toggleSettings(show) { playSound('soundClick'); document.getElementById('settingsModal').classList.toggle('hidden', !show); }
+function toggleHowTo(show) { playSound('soundClick'); document.getElementById('howToPlayModal').classList.toggle('hidden', !show); }
 
-/* Correct circular path (40 tiles) */
-const BOARD_PATH = [
-  44,45,46,47,48,
-  61,74,87,100,113,126,
-  127,128,129,116,103,90,77,64,
-  63,62,61,60,59,58,
-  45,32,19,6,5,4,3,16,29,42
-];
+function previewTheme(index) {
+    selectedThemeIndex = index;
+    const theme = document.getElementById('themeSong');
+    theme.src = THEMES[index];
+    theme.play();
+    playSound('soundClick');
+}
 
-const SAFE_INDEXES = [0, 8, 13, 21, 26, 34];
+function openNameEntry(count) {
+    playerCountToSetup = count;
+    const fields = document.getElementById('nameFields');
+    fields.innerHTML = '';
+    for(let i=0; i<4; i++) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.id = `nameInput${i}`;
+        input.placeholder = i < count ? `${COLORS[i].toUpperCase()} Player Name` : `${COLORS[i].toUpperCase()} (AI)`;
+        if(i >= count) input.disabled = true;
+        fields.appendChild(input);
+    }
+    document.getElementById('nameEntryModal').classList.remove('hidden');
+}
 
-let players = [];
-let currentPlayer = 0;
-let diceValue = 0;
-let leaderboard = [];
-
-/* ===== START GAME ===== */
-function startGame(count) {
-    document.getElementById("menu").classList.add("hidden");
-    document.getElementById("game").classList.remove("hidden");
-
+function startGameWithNames() {
+    document.getElementById('nameEntryModal').classList.add('hidden');
     players = [];
-    leaderboard = [];
-    currentPlayer = 0;
-
-    for (let i = 0; i < count; i++) {
-        players.push({
-            color: COLORS[i],
-            pieces: [-1,-1,-1,-1],
-            finished: 0,
-            ai: count === 1 && i !== 0
+    for(let i=0; i<4; i++) {
+        const customName = document.getElementById(`nameInput${i}`).value.trim();
+        players.push({ 
+            name: customName || COLORS[i].toUpperCase(), 
+            color: COLORS[i], 
+            pieces: [-1,-1,-1,-1], 
+            path: getPath(COLORS[i]), 
+            isAI: i >= playerCountToSetup, 
+            score: 0 
         });
     }
-
-    drawBoard();
-    updateTurn();
+    setupGameExecution();
 }
 
-/* ===== BOARD ===== */
-function drawBoard() {
-    const board = document.getElementById("board");
-    board.innerHTML = "";
+function setupGameExecution() {
+    const theme = document.getElementById('themeSong');
+    theme.src = THEMES[selectedThemeIndex];
+    theme.volume = 0.4; theme.play().catch(()=>{});
+    document.getElementById('menu').classList.add('hidden');
+    document.getElementById('pauseBtn').classList.remove('hidden');
+    document.getElementById('game').style.display = 'block';
+    createBoardUI();
+    updateUI();
+}
 
-    for (let i = 0; i < 169; i++) {
-        const cell = document.createElement("div");
-        cell.className = "cell";
-        board.appendChild(cell);
+function createBurst(cell) {
+    for(let i=0; i<12; i++) {
+        const p = document.createElement('div'); p.className = 'confetti';
+        p.style.setProperty('--tx', (Math.random()*100 - 50) + 'px');
+        p.style.setProperty('--ty', (Math.random()*100 - 50) + 'px');
+        p.style.backgroundColor = `hsl(${Math.random()*360}, 100%, 50%)`;
+        cell.appendChild(p);
+        setTimeout(() => p.remove(), 600);
     }
-
-    SAFE_INDEXES.forEach(i => {
-        document.querySelectorAll(".cell")[BOARD_PATH[i]].classList.add("safe");
-    });
-
-    drawTokens();
 }
 
-function drawTokens() {
-    const cells = document.querySelectorAll(".cell");
-
-    players.forEach((p, pi) => {
-        p.pieces.forEach((pos, ti) => {
-            if (pos < 0) return;
-
-            const token = document.createElement("div");
-            token.className = `token ${p.color}`;
-            token.onclick = () => movePiece(pi, ti);
-            cells[BOARD_PATH[pos]].appendChild(token);
-        });
-    });
-}
-
-/* ===== GAME LOGIC ===== */
 function rollDice() {
-    if (diceValue !== 0) return;
+    if(!canRoll || isPaused) return; canRoll = false;
+    playSound('soundDice');
+    const box = document.getElementById('dice-box'); box.classList.add('rolling');
+    let count = 0;
+    const interval = setInterval(() => {
+        box.textContent = DICE_FACES[Math.floor(Math.random() * 6)];
+        if(++count > 8) {
+            clearInterval(interval);
+            box.classList.remove('rolling');
+            diceValue = Math.floor(Math.random() * 6) + 1;
+            box.textContent = DICE_FACES[diceValue - 1];
+            
+            const announcer = document.getElementById('roll-announcer');
+            announcer.innerText = `${players[currentPlayer].name} ROLLED ${diceValue}`;
+            announcer.style.color = `var(--${players[currentPlayer].color})`;
 
-    diceValue = Math.floor(Math.random() * 6) + 1;
-    document.getElementById("dice").innerText = diceValue;
-
-    if (players[currentPlayer].ai) {
-        setTimeout(aiMove, 600);
-    }
+            const p = players[currentPlayer];
+            if(!p.pieces.some(pos => (pos === -1 ? diceValue === 6 : pos + diceValue <= 57))) setTimeout(nextTurn, 1000);
+            else { renderPieces(); if(p.isAI) setTimeout(aiMove, 600); }
+        }
+    }, 60);
 }
 
-function movePiece(pi, ti) {
-    if (pi !== currentPlayer || diceValue === 0) return;
-
-    let pos = players[pi].pieces[ti];
-
-    if (pos === -1 && diceValue !== 6) return;
-    if (pos === -1) pos = 0;
-    else pos += diceValue;
-
-    if (pos >= BOARD_PATH.length) {
-        players[pi].finished++;
-        players[pi].pieces[ti] = -2;
-        checkWin(pi);
-    } else {
-        players[pi].pieces[ti] = pos;
-        capture(pi, pos);
-    }
-
-    diceValue = 0;
-    drawBoard();
-
-    if (!players[pi].ai && diceValue !== 6) nextTurn();
+function movePiece(idx) {
+    const p = players[currentPlayer];
+    p.pieces[idx] = (p.pieces[idx] === -1) ? 0 : p.pieces[idx] + diceValue;
+    if(p.pieces[idx] === 57) { 
+        const coords = p.path[56];
+        const cell = document.querySelector(`[data-row="${coords[0]}"][data-col="${coords[1]}"]`);
+        createBurst(cell);
+        p.score++; 
+        playSound('soundWin');
+        if(p.score === 4) { checkGameOver(); return; }
+    } else checkCapture(p.pieces[idx]);
+    
+    if(diceValue === 6) { diceValue = 0; canRoll = true; renderPieces(); if(p.isAI) setTimeout(rollDice, 1000); }
+    else nextTurn();
 }
 
-function capture(pi, pos) {
-    if (SAFE_INDEXES.includes(pos)) return;
-
-    players.forEach((p, i) => {
-        if (i === pi) return;
-        p.pieces.forEach((pp, j) => {
-            if (pp === pos) p.pieces[j] = -1;
+function renderPieces() {
+    document.querySelectorAll('.token').forEach(t => t.remove());
+    players.forEach((p, pIdx) => {
+        p.pieces.forEach((pos, i) => {
+            if(pos >= 57) return;
+            const t = document.createElement('div'); t.className = `token`;
+            t.style.backgroundColor = `var(--${p.color})`;
+            let coords = (pos === -1) ? getHomePos(p.color, i) : p.path[pos];
+            const cell = document.querySelector(`[data-row="${coords[0]}"][data-col="${coords[1]}"]`);
+            if(!isPaused && pIdx === currentPlayer && diceValue > 0 && (pos === -1 ? diceValue === 6 : pos + diceValue <= 57)) {
+                t.classList.add('selectable'); t.onclick = () => movePiece(i);
+            }
+            cell.appendChild(t);
         });
     });
 }
 
-function nextTurn() {
-    do {
-        currentPlayer = (currentPlayer + 1) % players.length;
-    } while (players[currentPlayer].finished === 4);
-
-    updateTurn();
-
-    if (players[currentPlayer].ai) rollDice();
+function getPath(color) {
+    const common = [[6,1],[6,2],[6,3],[6,4],[6,5],[5,6],[4,6],[3,6],[2,6],[1,6],[0,6],[0,7],[0,8],[1,8],[2,8],[3,8],[4,8],[5,8],[6,9],[6,10],[6,11],[6,12],[6,13],[6,14],[7,14],[8,14],[8,13],[8,12],[8,11],[8,10],[8,9],[9,8],[10,8],[11,8],[12,8],[13,8],[14,8],[14,7],[14,6],[13,6],[12,6],[11,6],[10,6],[9,6],[8,5],[8,4],[8,3],[8,2],[8,1],[8,0],[7,0],[6,0]];
+    let start, home = [];
+    if(color === 'red') { start = 0; for(let i=1; i<7; i++) home.push([7,i]); }
+    else if(color === 'green') { start = 13; for(let i=1; i<7; i++) home.push([i,7]); }
+    else if(color === 'yellow') { start = 26; for(let i=13; i>7; i--) home.push([7,i]); }
+    else if(color === 'blue') { start = 39; for(let i=13; i>7; i--) home.push([i,7]); }
+    return common.slice(start).concat(common.slice(0, start)).concat(home);
 }
 
-function updateTurn() {
-    document.getElementById("turnText").innerText =
-        "Turn: " + players[currentPlayer].color.toUpperCase();
-}
-
-function aiMove() {
-    const p = players[currentPlayer];
-    const moves = [];
-
-    p.pieces.forEach((pos, i) => {
-        if (pos === -1 && diceValue === 6) moves.push(i);
-        else if (pos >= 0) moves.push(i);
-    });
-
-    if (moves.length) {
-        movePiece(currentPlayer, moves[Math.floor(Math.random()*moves.length)]);
+function createBoardUI() {
+    const b = document.getElementById('board'); b.innerHTML = '';
+    for(let r=0; r<15; r++) for(let c=0; c<15; c++) {
+        const cell = document.createElement('div'); cell.className = 'cell'; cell.dataset.row = r; cell.dataset.col = c;
+        if(r === 7 && c > 0 && c < 7) cell.classList.add('hs-red');
+        if(c === 7 && r > 0 && r < 7) cell.classList.add('hs-green');
+        if(r === 7 && c > 7 && c < 14) cell.classList.add('hs-yellow');
+        if(c === 7 && r > 7 && r < 14) cell.classList.add('hs-blue');
+        if(r<6 && c<6) cell.classList.add('base-red');
+        else if(r<6 && c>8) cell.classList.add('base-green');
+        else if(r>8 && c>8) cell.classList.add('base-yellow');
+        else if(r>8 && c<6) cell.classList.add('base-blue');
+        if(SAFE_POINTS.some(p => p[0]===r && p[1]===c)) cell.classList.add('safe-point');
+        b.appendChild(cell);
     }
+    renderPieces();
 }
 
-function checkWin(pi) {
-    if (players[pi].finished === 4) {
-        leaderboard.push(players[pi].color);
-        if (leaderboard.length === players.length) showWin();
-    }
-}
-
-function showWin() {
-    document.getElementById("winScreen").classList.remove("hidden");
-    const list = document.getElementById("finalLeaderboard");
-    leaderboard.forEach(c => {
-        const li = document.createElement("li");
-        li.innerText = c.toUpperCase();
-        list.appendChild(li);
+function checkCapture(posIdx) {
+    const p = players[currentPlayer]; const target = p.path[posIdx];
+    if(SAFE_POINTS.some(s => s[0]===target[0] && s[1]===target[1])) return;
+    players.forEach((opp, oi) => {
+        if(oi === currentPlayer) return;
+        opp.pieces.forEach((oPos, i) => {
+            if(oPos === -1 || oPos >= 51) return;
+            const enemy = opp.path[oPos];
+            if(enemy[0] === target[0] && enemy[1] === target[1]) opp.pieces[i] = -1;
+        });
     });
 }
 
-function toggleFullscreen() {
-    if (!document.fullscreenElement)
-        document.documentElement.requestFullscreen();
-    else
-        document.exitFullscreen();
+function checkGameOver() {
+    const winners = [...players].sort((a, b) => b.score - a.score);
+    document.getElementById('rankings-list').innerHTML = winners.map((p, i) => `<div class="modal-content" style="margin:5px 0; padding:10px; border-left:10px solid var(--${p.color})">${i+1}. ${p.name}</div>`).join('');
+    document.getElementById('winScreen').classList.remove('hidden');
+    document.getElementById('themeSong').pause();
 }
+
+function aiMove() { if(isPaused) return; const choices = []; players[currentPlayer].pieces.forEach((pos, i) => { if(pos === -1 ? diceValue === 6 : pos + diceValue <= 57) choices.push(i); }); movePiece(choices[Math.floor(Math.random() * choices.length)]); }
+function nextTurn() { currentPlayer = (currentPlayer + 1) % 4; diceValue = 0; canRoll = true; playSound('soundTurn'); updateUI(); renderPieces(); if(players[currentPlayer].isAI) setTimeout(rollDice, 1200); }
+
+function updateUI() {
+    const sb = document.getElementById('scoreboard');
+    sb.innerHTML = players.map((p, i) => `<div style="padding:8px 12px; border-radius:10px; background:${i === currentPlayer ? 'var(--'+p.color+')' : 'var(--glass)'}; border: 1px solid ${i === currentPlayer ? 'white' : 'transparent'}; font-size: 0.8rem; font-weight: bold;">${p.name}: ${p.score}</div>`).join('');
+}
+
+function getHomePos(color, i) { const h = { red:[[1,1],[1,4],[4,1],[4,4]], green:[[1,10],[1,13],[4,10],[4,13]], yellow:[[10,10],[10,13],[13,10],[13,13]], blue:[[10,1],[10,4],[13,1],[13,4]] }; return h[color][i]; }
 </script>
 </body>
 </html>
